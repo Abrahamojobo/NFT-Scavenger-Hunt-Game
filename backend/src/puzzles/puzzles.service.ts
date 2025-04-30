@@ -62,5 +62,17 @@ export class PuzzlesService {
   
     return puzzle;
   }
+
+  // Return the total number of puzzles
+  public async getTotalPuzzles(): Promise<number> {
+    return this.puzzleRepository.count();
+  }
+
+  // Return the total number of puzzles in a specific level
+  public async getTotalPuzzlesInLevel(levelId: string | number): Promise<number> {
+    // Ensure levelId is a number for type compatibility
+    const numericLevelId = typeof levelId === 'string' ? parseInt(levelId, 10) : levelId;
+    return this.puzzleRepository.count({ where: { level: { id: numericLevelId } } });
+  }
 }
 

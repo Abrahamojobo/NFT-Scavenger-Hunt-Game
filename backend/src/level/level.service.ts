@@ -53,4 +53,8 @@ export class LevelService {
     const level = await this.findOne(id);
     return await this.levelRepository.remove(level);
   }
+
+  async getTotalLevels(): Promise<number> {
+    return this.levelRepository.count();
+  }
 }

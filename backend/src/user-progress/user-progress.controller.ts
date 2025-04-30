@@ -12,6 +12,7 @@ import {
   UseGuards
 } from '@nestjs/common';
 import { UserProgressDto } from './dto/user-progress.dto';
+import { GameCompletionRateDto } from './dto/game-completion-rate.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guard/roles.guard';
 import { Role } from 'src/auth/enums/roles.enum';
@@ -67,13 +68,14 @@ export class UserProgressController {
   @Post('level-completed')
   async levelCompleted(@Request() req, @Body() body: { levelId: number }) {
     return this.userProgressService.levelCompleted(req.user.id, body.levelId);
+  }
 
   @Get(':userId/level/:levelId')
   @Roles(Role.ADMIN)
   @UseGuards(RolesGuard)
   async getLevelProgress(
-    @Query('userId', ParseIntPipe) userId: number,
-    @Query('levelId', ParseIntPipe) levelId: string,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('levelId') levelId: string,
   ) {
     return this.userProgressService.getLevelProgress(userId, levelId);
   }
@@ -82,9 +84,35 @@ export class UserProgressController {
   @Roles(Role.ADMIN)
   @UseGuards(RolesGuard)
   async getSolvedPuzzlesInLevel(
-    @Query('userId', ParseIntPipe) userId: number,
-    @Query('levelId', ParseIntPipe) levelId: string,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('levelId', ParseIntPipe) levelId: number,
   ): Promise<number> {
-    return this.userProgressService.getSolvedPuzzlesInLevel(userId, levelId);
+    const result = await this.userProgressService.getSolvedPuzzlesInLevel(userId, levelId);
+    return result.count;
+  }
+
+  // GET endpoint for game completion rate
+  @Get('game-progress/completion-rate/:gameId')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  async getGameCompletionRate(
+    @Request() req,
+    @Param('gameId') gameId: string,
+  ): Promise<GameCompletionRateDto> {
+    try {
+      const userId = req.user.id;
+      const result = await this.userProgressService.getGameCompletionRate(userId, gameId);
+      return {
+        success: true,
+        completionRate: result.completionRate,
+        message: 'Game completion rate retrieved successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        completionRate: 0,
+        message: error.message || 'Server error',
+      };
+    }
   }
 }
