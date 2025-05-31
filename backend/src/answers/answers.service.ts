@@ -15,6 +15,7 @@ import { CheckAnswerDto } from './dto/check-answer.dto';
 import { CreateAnswerDto, UpdateAnswerDto } from './answers.dto';
 import { validate } from 'class-validator';
 import { HintsService } from 'src/hints/hints.service';
+import { SecurityService } from '../security/security.service';
 
 @Injectable()
 export class AnswersService {
@@ -31,7 +32,8 @@ export class AnswersService {
     @InjectRepository(Hints)
     private readonly hintRepository: Repository<Hints>,
 
-    private readonly hintsService: HintsService
+    private readonly hintsService: HintsService,
+    private readonly securityService: SecurityService
   ) {}
 
   async checkAnswer(checkAnswerDto: CheckAnswerDto): Promise<boolean> {
@@ -57,6 +59,19 @@ export class AnswersService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
+    // Check if user is blocked
+    const isBlocked = await this.securityService.isUserBlocked(user.id);
+    if (isBlocked) {
+      const blockExpiration = await this.securityService.getBlockExpiration(user.id);
+      throw new BadRequestException({
+        message: 'Too many attempts. Please try again later.',
+        blockExpiresAt: blockExpiration
+      });
+    }
+
+    // Validate the answer
+    const isCorrect = this.validateAnswer(puzzle, answer);
+
     // Store the submitted answer for the puzzle
     const newAnswer = this.answerRepository.create({
       text: answer,
@@ -65,7 +80,17 @@ export class AnswersService {
     });
     await this.answerRepository.save(newAnswer);
 
-    return this.validateAnswer(puzzle, answer);
+    // Record the attempt and check for suspicious activity
+    const canContinue = await this.securityService.recordAttempt(user, puzzle, isCorrect);
+    if (!canContinue) {
+      const blockExpiration = await this.securityService.getBlockExpiration(user.id);
+      throw new BadRequestException({
+        message: 'Suspicious activity detected. Access temporarily blocked.',
+        blockExpiresAt: blockExpiration
+      });
+    }
+
+    return isCorrect;
   }
 
   private validateAnswer(puzzle: Puzzles, answer: string): boolean {

@@ -24,6 +24,9 @@ export class Puzzles {
   @Column({nullable: true})
   title: string;
 
+  @Column()
+  correctAnswer: string;
+
   @OneToMany(() => Hints, (hints) => hints.puzzles)
   hints: Hints[];
 
@@ -46,9 +49,6 @@ export class Puzzles {
   @OneToOne(() => NFTs, (nfts) => nfts.puzzles, { nullable: true })
   nfts: NFTs;
 
-  @ManyToOne(() => UserProgress, (userProgress) => userProgress.puzzles)
-  userProgress: UserProgress;
-
   @ManyToOne(() => Level, (level) => level.puzzles)
   level: Level;
 
@@ -66,14 +66,8 @@ export class Puzzles {
 
   @BeforeInsert()
   async updateLevelCount() {
-<<<<<<< HEAD
     if (this.level) {
       await this.level.incrementCount(this.levelEnum);
     }
-=======
-      if (this.level) {
-          await Level.incrementCount(this.levelEnum);
-      }
->>>>>>> b40c5d58a38f2cff0d7a4d88c0625c5f83073de4
   }
 }
